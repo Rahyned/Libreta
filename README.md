@@ -1,6 +1,6 @@
 # Libreta de Películas 🎬📓
 
-Aplicación de escritorio nativa para anotar, rankear y comparar películas **en pareja**, con estética de libreta cute y colores pastel.
+Aplicación de escritorio nativa para anotar, rankear y comparar películas, con estética de libreta cute y colores pastel.
 
 > "una libreta para lo que vemos juntos"
 
@@ -24,7 +24,7 @@ Todo se guarda **localmente** en la máquina: privacidad total para la pareja, s
 - Calificación de **1 a 5 estrellas** con animación *spring*.
 - **Emoji de humor** (😍 Increíble … 😞 No recomiendo) para capturar la sensación subjetiva.
 - **Nota personal** en tipografía manuscrita.
-- Dos usuarios por defecto: **Yo** y **Mi pareja**, cada uno con su color identificativo.
+- Dos usuarios por defecto: cada uno con su color identificativo.
 
 ### Comparación
 - Vista lado a lado del rating de cada uno por película.
@@ -54,7 +54,7 @@ Todo se guarda **localmente** en la máquina: privacidad total para la pareja, s
 
 | Capa | Tecnología | ¿Por qué? |
 | --- | --- | --- |
-| Shell de escritorio | **Tauri 2** (Rust) | Binarios pequeños (~10 MB), bajo uso de memoria y alto rendimiento. Al ser 100 % local, respeta la privacidad de la pareja. |
+| Shell de escritorio | **Tauri 2** (Rust) | Binarios pequeños (~10 MB), bajo uso de memoria y alto rendimiento. Al ser 100 % local. |
 | Frontend | **React 18 + TypeScript** | Componentes declarativos y tipado estático que evitan errores al crecer el modelo de datos (Movie, Rating, User). |
 | Build | **Vite 6** | Dev server instantáneo y empaquetado rápido; es el estándar de facto para frontends Tauri. |
 | Estilos | **Tailwind CSS** (paleta customizada) | Utilidades únicas (`paper`, `ink`, `pink`, `blue`, `peach`, `line`) que materializan la estética de libreta pastel sin CSS suelto. |
@@ -219,4 +219,3 @@ npm run tauri build      # generar instalador
 
 ---
 
-Hecha con cariño, para ustedes dos. 💕
