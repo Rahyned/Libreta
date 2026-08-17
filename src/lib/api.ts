@@ -21,7 +21,7 @@ export interface Api {
   updateMovie(id: string, input: MovieInput): Promise<MovieWithRatings>;
   deleteMovie(id: string): Promise<void>;
   saveRating(input: RatingInput): Promise<Rating>;
-  searchMovie(title: string, year?: number | null): Promise<MovieSearchResult | null>;
+  searchMovie(title: string, year?: number | null): Promise<MovieSearchResult[]>;
   getSetting(key: string): Promise<string | null>;
   setSetting(key: string, value: string): Promise<void>;
 }
@@ -40,7 +40,7 @@ const realApi: Api = {
   deleteMovie: (id) => invoke<void>("delete_movie", { id }),
   saveRating: (input) => invoke<Rating>("save_rating", { input }),
   searchMovie: (title, year) =>
-    invoke<MovieSearchResult | null>("search_movie", { title, year }),
+    invoke<MovieSearchResult[]>("search_movie", { title, year }),
   getSetting: (key) => invoke<string | null>("get_setting", { key }),
   setSetting: (key, value) => invoke<void>("set_setting", { key, value }),
 };
@@ -80,6 +80,7 @@ function sampleDb(): MockDb {
       poster_url: null,
       notes: "Película épica y hermosa",
       watched_at: "En el Cine",
+      watched: true,
     },
     {
       id: "m2",
@@ -90,6 +91,7 @@ function sampleDb(): MockDb {
       poster_url: null,
       notes: null,
       watched_at: "En Casa",
+      watched: true,
     },
     {
       id: "m3",
@@ -100,6 +102,7 @@ function sampleDb(): MockDb {
       poster_url: null,
       notes: "Wong Kar-wai en su máxima elegancia",
       watched_at: "En Casa",
+      watched: true,
     },
     {
       id: "m4",
@@ -110,6 +113,7 @@ function sampleDb(): MockDb {
       poster_url: null,
       notes: "La vimos mil veces y no cansa",
       watched_at: "En Casa",
+      watched: true,
     },
   ];
 
@@ -230,9 +234,9 @@ function saveSettings(s: Record<string, string>): void {
 async function mockSearchPoster(
   title: string,
   _year?: number | null
-): Promise<MovieSearchResult | null> {
+): Promise<MovieSearchResult[]> {
   const q = title.trim();
-  if (!q) return null;
+  if (!q) return [];
 
   const variants = [q, `${q} (film)`, `${q} (película)`];
 
@@ -255,13 +259,15 @@ async function mockSearchPoster(
         const pages: Record<string, any> = data?.query?.pages ?? {};
         for (const page of Object.values(pages)) {
           if (page?.thumbnail?.source) {
-            return {
-              poster_url: page.thumbnail.source,
-              title: page.title ?? q,
-              year: null,
-              genres: [],
-              source: "wikipedia",
-            };
+            return [
+              {
+                poster_url: page.thumbnail.source,
+                title: page.title ?? q,
+                year: null,
+                genres: [],
+                source: "wikipedia",
+              },
+            ];
           }
         }
       } catch {
@@ -269,7 +275,7 @@ async function mockSearchPoster(
       }
     }
   }
-  return null;
+  return [];
 }
 
 const mockApi: Api = {
@@ -308,6 +314,7 @@ const mockApi: Api = {
       poster_url: input.poster_url ?? null,
       notes: input.notes ?? null,
       watched_at: input.watched_at ?? null,
+      watched: input.watched ?? true,
     };
     db.movies.unshift(movie);
     saveMock(db);
@@ -327,6 +334,7 @@ const mockApi: Api = {
       notes: input.notes ?? null,
       watched_at: input.watched_at ?? null,
       added_date: input.added_date ?? db.movies[idx].added_date,
+      watched: input.watched ?? db.movies[idx].watched,
     };
     saveMock(db);
     return {

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Clapperboard, Home } from "lucide-react";
 import { api } from "../lib/api";
 import { GENRES, WATCHED_AT_OPTIONS } from "../lib/constants";
-import type { Movie, MovieInput } from "../types";
+import type { Movie, MovieInput, MovieSearchResult } from "../types";
 import Modal from "./Modal";
 
 interface Props {
@@ -23,13 +23,16 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
   const [posterUrl, setPosterUrl] = useState("");
   const [notes, setNotes] = useState("");
   const [watchedAt, setWatchedAt] = useState<string>("");
+  const [watched, setWatched] = useState(true);
   const [date, setDate] = useState(today);
   const [error, setError] = useState<string | null>(null);
   const [posterStatus, setPosterStatus] = useState<PosterStatus>("idle");
-  const [posterTitle, setPosterTitle] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<MovieSearchResult[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
 
   const searchToken = useRef(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const manualPickRef = useRef(false);
 
   useEffect(() => {
     if (open) {
@@ -39,10 +42,13 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
       setPosterUrl(initial?.poster_url ?? "");
       setNotes(initial?.notes ?? "");
       setWatchedAt(initial?.watched_at ?? "");
+      setWatched(initial?.watched ?? true);
       setDate(initial?.added_date ? initial.added_date.slice(0, 10) : today());
       setError(null);
       setPosterStatus("idle");
-      setPosterTitle(null);
+      setCandidates([]);
+      setSelectedIndex(-1);
+      manualPickRef.current = false;
       searchToken.current += 1;
     }
   }, [open, initial]);
@@ -52,13 +58,13 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
     const q = title.trim();
     if (q.length < 3) {
       setPosterStatus("idle");
-      setPosterTitle(null);
+      setCandidates([]);
+      setSelectedIndex(-1);
       return;
     }
 
     const token = ++searchToken.current;
     setPosterStatus("searching");
-    setPosterTitle(null);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
@@ -66,21 +72,43 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
       const parsedYear = year.trim() && !Number.isNaN(y) ? y : null;
       const result = await api.searchMovie(q, parsedYear);
       if (token !== searchToken.current) return;
-      if (result) {
-        if (result.year) setYear(String(result.year));
-        if (result.genres.length > 0) setGenre(result.genres[0]);
-        if (result.poster_url) setPosterUrl(result.poster_url);
-        setPosterTitle(result.title);
-        setPosterStatus("found");
-      } else {
+
+      if (result.length === 0) {
+        manualPickRef.current = false;
+        setCandidates([]);
+        setSelectedIndex(-1);
         setPosterStatus("notfound");
+        return;
       }
+
+      setCandidates(result);
+      if (manualPickRef.current) {
+        setPosterStatus("found");
+        return;
+      }
+      setSelectedIndex(0);
+      const best = result[0];
+      if (best.year) setYear(String(best.year));
+      if (best.genres.length > 0) setGenre(best.genres[0]);
+      if (best.poster_url) setPosterUrl(best.poster_url);
+      setPosterStatus("found");
     }, 600);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [title, year, open]);
+
+  const selectCandidate = (i: number) => {
+    const c = candidates[i];
+    if (!c) return;
+    manualPickRef.current = true;
+    setSelectedIndex(i);
+    setTitle(c.title);
+    if (c.year) setYear(String(c.year));
+    if (c.genres.length > 0) setGenre(c.genres[0]);
+    if (c.poster_url) setPosterUrl(c.poster_url);
+  };
 
   const handleSubmit = () => {
     if (!title.trim()) {
@@ -101,8 +129,9 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
       genre: genre.trim() || null,
       poster_url: posterUrl.trim() || null,
       notes: notes.trim() || null,
-      watched_at: watchedAt || null,
+      watched_at: watched ? (watchedAt || null) : null,
       added_date: date || today(),
+      watched,
     });
   };
 
@@ -122,7 +151,11 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
           </label>
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              manualPickRef.current = false;
+              setSelectedIndex(-1);
+            }}
             className={inputClass}
             placeholder="Ej. Oppenheimer"
             autoFocus
@@ -162,6 +195,29 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
         </div>
 
         <div>
+          <button
+            type="button"
+            onClick={() => {
+              setWatched((w) => !w);
+            }}
+            className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${
+              watched
+                ? "border-line bg-paper text-ink-soft"
+                : "border-pink bg-pink/15 text-ink"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 rounded border ${
+                watched ? "border-line bg-paper" : "border-pink bg-pink/40"
+              }`}
+            >
+              {!watched && "✓"}
+            </span>
+            Aún no la vimos (en la watchlist)
+          </button>
+        </div>
+
+        <div className={watched ? "" : "pointer-events-none opacity-40"}>
           <label className="mb-1 block text-xs font-medium text-ink-soft">
             ¿Dónde la vimos?
           </label>
@@ -207,33 +263,61 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
           <label className="mb-1 block text-xs font-medium text-ink-soft">
             Póster
           </label>
-          <div className="flex gap-3">
+
+          {posterStatus === "searching" && (
+            <p className="text-xs text-ink-soft">
+              Buscando "{title.trim()}"…
+            </p>
+          )}
+          {posterStatus === "notfound" && (
+            <p className="text-xs text-ink-soft">
+              No se encontró en TMDB ni Wikipedia. Pega la URL a mano.
+            </p>
+          )}
+
+          {posterStatus === "found" && candidates.length > 0 && (
+            <div className="mt-1 flex gap-2 overflow-x-auto rounded-xl border border-line/70 bg-white/50 p-2">
+              {candidates.map((c, i) => {
+                const active = i === selectedIndex;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => selectCandidate(i)}
+                    className={`w-[76px] shrink-0 rounded-lg border p-1 text-center transition ${
+                      active
+                        ? "border-pink bg-pink/15"
+                        : "border-line hover:bg-line/40"
+                    }`}
+                  >
+                    <img
+                      src={c.poster_url}
+                      alt={c.title}
+                      className="mx-auto h-24 w-16 rounded-md object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                    <span className="mt-1 block truncate text-[10px] font-medium text-ink">
+                      {c.title}
+                    </span>
+                    {c.year && (
+                      <span className="text-[9px] text-ink-soft">{c.year}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="mt-2 flex gap-3">
             <div className="min-w-0 flex-1">
               <input
                 value={posterUrl}
-                onChange={(e) => {
-                  setPosterUrl(e.target.value);
-                  setPosterStatus("idle");
-                  setPosterTitle(null);
-                }}
+                onChange={(e) => setPosterUrl(e.target.value)}
                 className={inputClass}
-                placeholder="https://… (se autocompleta mientras escribes)"
+                placeholder="https://… (elige de la lista arriba)"
               />
-              {posterStatus === "searching" && (
-                <p className="mt-1 text-xs text-ink-soft">
-                  Buscando "{title.trim()}"…
-                </p>
-              )}
-              {posterStatus === "found" && (
-                <p className="mt-1 text-xs text-success">
-                  Póster encontrado{posterTitle ? `: ${posterTitle}` : ""}
-                </p>
-              )}
-              {posterStatus === "notfound" && (
-                <p className="mt-1 text-xs text-ink-soft">
-                  No se encontró en TMDB ni Wikipedia. Pega la URL a mano.
-                </p>
-              )}
             </div>
             {posterUrl.trim() && (
               <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg border border-line bg-line/30">

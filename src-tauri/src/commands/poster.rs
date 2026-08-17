@@ -61,10 +61,10 @@ pub async fn search_movie(
     state: State<'_, AppState>,
     title: String,
     year: Option<i32>,
-) -> Result<Option<MovieSearchResult>, String> {
+) -> Result<Vec<MovieSearchResult>, String> {
     let title = title.trim();
     if title.is_empty() {
-        return Ok(None);
+        return Ok(vec![]);
     }
 
     let key: Option<String> = {
@@ -73,8 +73,9 @@ pub async fn search_movie(
     };
 
     if let Some(key) = key.filter(|k| !k.trim().is_empty()) {
-        if let Some(found) = search_tmdb(&key, title, year).await {
-            return Ok(Some(found));
+        let found = search_tmdb(&key, title, year).await;
+        if !found.is_empty() {
+            return Ok(found);
         }
     }
 
@@ -85,7 +86,7 @@ async fn search_tmdb(
     key: &str,
     title: &str,
     year: Option<i32>,
-) -> Option<MovieSearchResult> {
+) -> Vec<MovieSearchResult> {
     let client = reqwest::Client::new();
 
     for lang in ["es-ES", "en-US"] {
@@ -98,7 +99,15 @@ async fn search_tmdb(
             params.push(("year".to_string(), y.to_string()));
         }
 
-        let resp = client.get(TMDB_SEARCH_URL).query(&params).send().await.ok()?;
+        let resp = client
+            .get(TMDB_SEARCH_URL)
+            .query(&params)
+            .send()
+            .await
+            .ok();
+        let Some(resp) = resp else {
+            continue;
+        };
         if !resp.status().is_success() {
             continue;
         }
@@ -106,17 +115,14 @@ async fn search_tmdb(
             continue;
         };
 
+        let genres = tmdb_genre_names(&client, key).await;
+        let lower = title.to_lowercase();
+
+        let mut scored: Vec<(i64, MovieSearchResult)> = Vec::new();
         for r in data.results {
             let Some(poster_path) = r.poster_path else {
                 continue;
             };
-
-            let genres = tmdb_genre_names(&client, key).await;
-            let genres: Vec<String> = r
-                .genre_ids
-                .iter()
-                .filter_map(|id| genres.get(id).cloned())
-                .collect();
 
             let parsed_year = r
                 .release_date
@@ -124,17 +130,47 @@ async fn search_tmdb(
                 .and_then(|d| d.get(0..4))
                 .and_then(|s| s.parse::<i32>().ok());
 
-            return Some(MovieSearchResult {
-                title: r.title.unwrap_or_else(|| title.to_string()),
-                year: parsed_year,
-                genres,
-                poster_url: format!("{}{}", TMDB_IMAGE_BASE, poster_path),
-                source: "tmdb".to_string(),
-            });
+            let mut score = 0i64;
+            let t = r.title.as_deref().unwrap_or("").to_lowercase();
+            if !t.is_empty() && t == lower {
+                score += 100;
+            } else if t.starts_with(&lower) {
+                score += 50;
+            } else if t.contains(&lower) {
+                score += 30;
+            }
+            if year == parsed_year {
+                score += 20;
+            }
+
+            let genres: Vec<String> = r
+                .genre_ids
+                .iter()
+                .filter_map(|id| genres.get(id).cloned())
+                .collect();
+
+            scored.push((
+                score,
+                MovieSearchResult {
+                    title: r.title.unwrap_or_else(|| title.to_string()),
+                    year: parsed_year,
+                    genres,
+                    poster_url: format!("{}{}", TMDB_IMAGE_BASE, poster_path),
+                    source: "tmdb".to_string(),
+                },
+            ));
+        }
+
+        scored.sort_by(|a, b| b.0.cmp(&a.0));
+        let mut out: Vec<MovieSearchResult> =
+            scored.into_iter().map(|(_, r)| r).collect();
+        out.truncate(5);
+        if !out.is_empty() {
+            return out;
         }
     }
 
-    None
+    Vec::new()
 }
 
 async fn tmdb_genre_names(
@@ -156,7 +192,7 @@ async fn tmdb_genre_names(
     HashMap::new()
 }
 
-async fn search_wikipedia(title: &str) -> Option<MovieSearchResult> {
+async fn search_wikipedia(title: &str) -> Vec<MovieSearchResult> {
     let client = reqwest::Client::new();
     let variants = vec![
         title.to_string(),
@@ -182,7 +218,7 @@ async fn search_wikipedia(title: &str) -> Option<MovieSearchResult> {
                         for page in data.query.pages.values() {
                             if let Some(thumb) = &page.thumbnail {
                                 if let Some(source) = &thumb.source {
-                                    return Some(MovieSearchResult {
+                                    return vec![MovieSearchResult {
                                         poster_url: source.clone(),
                                         title: page
                                             .title
@@ -191,7 +227,7 @@ async fn search_wikipedia(title: &str) -> Option<MovieSearchResult> {
                                         year: None,
                                         genres: vec![],
                                         source: "wikipedia".to_string(),
-                                    });
+                                    }];
                                 }
                             }
                         }
@@ -201,5 +237,5 @@ async fn search_wikipedia(title: &str) -> Option<MovieSearchResult> {
         }
     }
 
-    None
+    Vec::new()
 }
