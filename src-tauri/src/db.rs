@@ -46,6 +46,7 @@ pub fn init(path: PathBuf) -> Result<Connection> {
         ",
     )?;
     ensure_column(&conn, "movies", "watched_at", "TEXT")?;
+    ensure_column(&conn, "movies", "watched", "INTEGER NOT NULL DEFAULT 1")?;
     Ok(conn)
 }
 
@@ -104,7 +105,7 @@ pub fn fetch_users(conn: &Connection) -> Result<Vec<User>> {
 
 pub fn fetch_movies(conn: &Connection) -> Result<Vec<Movie>> {
     let mut stmt = conn.prepare(
-        "SELECT id, title, year, genre, added_date, poster_url, notes, watched_at
+        "SELECT id, title, year, genre, added_date, poster_url, notes, watched_at, watched
          FROM movies ORDER BY added_date DESC, rowid DESC",
     )?;
     let rows = stmt.query_map([], |row| {
@@ -117,6 +118,7 @@ pub fn fetch_movies(conn: &Connection) -> Result<Vec<Movie>> {
             poster_url: row.get("poster_url")?,
             notes: row.get("notes")?,
             watched_at: row.get("watched_at")?,
+            watched: row.get::<_, i64>("watched")? != 0,
         })
     })?;
     rows.collect()

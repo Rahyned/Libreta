@@ -38,19 +38,28 @@ export default function Home() {
     load();
   }, [load]);
 
-  const stats = useMemo(() => computeStats(movies, users), [movies, users]);
+  const watchedMovies = useMemo(
+    () => movies.filter((m) => m.movie.watched),
+    [movies]
+  );
+
+  const stats = useMemo(
+    () => computeStats(watchedMovies, users),
+    [watchedMovies, users]
+  );
 
   const genreOptions = useMemo(() => {
     const set = new Set<string>(GENRES);
-    for (const { movie } of movies) {
+    for (const { movie } of watchedMovies) {
       if (movie.genre) set.add(movie.genre);
     }
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [movies]);
+  }, [watchedMovies]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return movies.filter(({ movie }) => {
+      if (!movie.watched) return false;
       const matchesSearch =
         !q ||
         movie.title.toLowerCase().includes(q) ||
@@ -67,8 +76,9 @@ export default function Home() {
   }, [rateMovie, movies]);
 
   const handleAdd = async (input: MovieInput) => {
-    await addMovie(input);
+    const created = await addMovie(input);
     setAddOpen(false);
+    if (created && created.movie.watched) setRateMovie(created.movie);
   };
 
   const handleEdit = async (input: MovieInput) => {

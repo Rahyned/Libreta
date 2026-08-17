@@ -28,7 +28,7 @@ pub fn fetch_all(conn: &Connection) -> rusqlite::Result<Vec<MovieWithRatings>> {
 
 fn movie_by_id(conn: &Connection, id: &str) -> rusqlite::Result<Movie> {
     conn.query_row(
-        "SELECT id, title, year, genre, added_date, poster_url, notes, watched_at
+        "SELECT id, title, year, genre, added_date, poster_url, notes, watched_at, watched
          FROM movies WHERE id = ?1",
         params![id],
         |row| {
@@ -41,6 +41,7 @@ fn movie_by_id(conn: &Connection, id: &str) -> rusqlite::Result<Movie> {
                 poster_url: row.get("poster_url")?,
                 notes: row.get("notes")?,
                 watched_at: row.get("watched_at")?,
+                watched: row.get::<_, i64>("watched")? != 0,
             })
         },
     )
@@ -64,9 +65,10 @@ pub fn add_movie(
 
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     let id = Uuid::new_v4().to_string();
+    let watched = if input.watched { 1 } else { 0 };
     conn.execute(
-        "INSERT INTO movies (id, title, year, genre, poster_url, notes, watched_at, added_date)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, COALESCE(?8, CURRENT_TIMESTAMP))",
+        "INSERT INTO movies (id, title, year, genre, poster_url, notes, watched_at, added_date, watched)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, COALESCE(?8, CURRENT_TIMESTAMP), ?9)",
         params![
             id,
             title,
@@ -75,7 +77,8 @@ pub fn add_movie(
             input.poster_url,
             input.notes,
             input.watched_at,
-            input.added_date
+            input.added_date,
+            watched
         ],
     )
     .map_err(|e| e.to_string())?;
@@ -99,10 +102,11 @@ pub fn update_movie(
     }
 
     let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let watched = if input.watched { 1 } else { 0 };
     conn.execute(
         "UPDATE movies SET title = ?1, year = ?2, genre = ?3, poster_url = ?4, notes = ?5,
-         watched_at = ?6, added_date = COALESCE(?7, added_date)
-         WHERE id = ?8",
+         watched_at = ?6, added_date = COALESCE(?7, added_date), watched = ?8
+         WHERE id = ?9",
         params![
             title,
             input.year,
@@ -111,6 +115,7 @@ pub fn update_movie(
             input.notes,
             input.watched_at,
             input.added_date,
+            watched,
             id
         ],
     )

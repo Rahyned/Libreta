@@ -17,6 +17,7 @@ pub struct Movie {
     pub poster_url: Option<String>,
     pub notes: Option<String>,
     pub watched_at: Option<String>,
+    pub watched: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,6 +46,7 @@ pub struct MovieInput {
     pub notes: Option<String>,
     pub watched_at: Option<String>,
     pub added_date: Option<String>,
+    pub watched: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

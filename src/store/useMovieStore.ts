@@ -15,10 +15,11 @@ interface MovieState {
   meId: string | null;
   partnerId: string | null;
   load: () => Promise<void>;
-  addMovie: (input: MovieInput) => Promise<void>;
+  addMovie: (input: MovieInput) => Promise<MovieWithRatings>;
   updateMovie: (id: string, input: MovieInput) => Promise<void>;
   deleteMovie: (id: string) => Promise<void>;
   saveRating: (input: RatingInput) => Promise<void>;
+  setWatched: (id: string, watched: boolean) => Promise<void>;
   updateUser: (id: string, name: string, color: string) => Promise<void>;
   clearError: () => void;
 }
@@ -53,6 +54,7 @@ export const useMovieStore = create<MovieState>((set, get) => ({
   addMovie: async (input) => {
     const created = await api.addMovie(input);
     set((s) => ({ movies: [created, ...s.movies] }));
+    return created;
   },
 
   updateMovie: async (id, input) => {
@@ -70,6 +72,24 @@ export const useMovieStore = create<MovieState>((set, get) => ({
   saveRating: async (input) => {
     await api.saveRating(input);
     await get().load();
+  },
+
+  setWatched: async (id, watched) => {
+    const current = get().movies.find((m) => m.movie.id === id)?.movie;
+    if (!current) return;
+    const updated = await api.updateMovie(id, {
+      title: current.title,
+      year: current.year,
+      genre: current.genre,
+      poster_url: current.poster_url,
+      notes: current.notes,
+      watched_at: watched ? current.watched_at : null,
+      added_date: current.added_date,
+      watched,
+    });
+    set((s) => ({
+      movies: s.movies.map((m) => (m.movie.id === id ? { ...m, movie: updated.movie } : m)),
+    }));
   },
 
   updateUser: async (id, name, color) => {

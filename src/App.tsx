@@ -1,11 +1,13 @@
-import { BarChart3, Film, Home as HomeIcon, Settings as SettingsIcon } from "lucide-react";
+import { BarChart3, Eye, Film, Home as HomeIcon, Settings as SettingsIcon } from "lucide-react";
 import { HashRouter, NavLink, Route, Routes } from "react-router-dom";
 import Comparison from "./pages/Comparison";
 import Home from "./pages/Home";
 import Settings from "./pages/Settings";
+import Watchlist from "./pages/Watchlist";
 
 const nav = [
   { to: "/", label: "Inicio", icon: HomeIcon },
+  { to: "/watchlist", label: "Watchlist", icon: Eye },
   { to: "/comparacion", label: "Comparación", icon: BarChart3 },
   { to: "/ajustes", label: "Ajustes", icon: SettingsIcon },
 ];
@@ -61,15 +63,12 @@ export default function App() {
               <NavItem key={item.to} {...item} />
             ))}
           </nav>
-
-          <p className="mt-auto px-2 font-handwritten text-base text-ink-soft/70">
-            para ustedes dos
-          </p>
         </aside>
 
         <main className="min-w-0 flex-1">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/comparacion" element={<Comparison />} />
             <Route path="/ajustes" element={<Settings />} />
           </Routes>
