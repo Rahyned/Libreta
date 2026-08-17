@@ -10,11 +10,28 @@ export function computeStats(
     ? ratings.reduce((s, r) => s + r.rating, 0) / totalRatings
     : 0;
 
-  const distribution = [0, 0, 0, 0, 0];
+  const distribution = new Array(10).fill(0);
   for (const r of ratings) {
-    const bucket = Math.min(4, Math.max(0, Math.round(r.rating) - 1));
+    const val = Math.round(r.rating * 2) / 2; // 0.5, 1.0, 1.5 ...
+    const bucket = Math.min(9, Math.max(0, val * 2 - 1));
     distribution[bucket]++;
   }
+
+  const distributionByUser = users.map((user) => {
+    const counts = new Array(10).fill(0);
+    for (const r of ratings) {
+      if (r.user_id !== user.id) continue;
+      const val = Math.round(r.rating * 2) / 2;
+      const bucket = Math.min(9, Math.max(0, val * 2 - 1));
+      counts[bucket]++;
+    }
+    return {
+      userId: user.id,
+      name: user.name,
+      color: user.color,
+      counts,
+    };
+  });
 
   const perUser = users.map((user) => {
     const rs = ratings.filter((r) => r.user_id === user.id);
@@ -79,6 +96,7 @@ export function computeStats(
     totalMovies: movies.length,
     totalRatings,
     distribution,
+    distributionByUser,
     perUser,
     perGenre,
     perYear,

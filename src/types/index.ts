@@ -13,6 +13,7 @@ export interface Movie {
   poster_url: string | null;
   notes: string | null;
   watched_at: string | null;
+  watched: boolean;
 }
 
 export interface Rating {
@@ -38,6 +39,7 @@ export interface MovieInput {
   notes?: string | null;
   watched_at?: string | null;
   added_date?: string | null;
+  watched?: boolean;
 }
 
 export interface RatingInput {
@@ -69,7 +71,8 @@ export interface Stats {
   avgRating: number;
   totalMovies: number;
   totalRatings: number;
-  distribution: number[]; // index 0..4 => count for 1..5 stars
+  distribution: number[]; // index 0..9 => count for 0.5..5 stars
+  distributionByUser: { userId: string; name: string; color: string; counts: number[] }[];
   perUser: PerUserStat[];
   perGenre: CountStat[];
   perYear: CountStat[];

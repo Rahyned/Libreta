@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import {
   Award,
   BarChart3,
@@ -34,8 +33,6 @@ function StatCard({
 }
 
 export default function StatsBoard({ stats }: Props) {
-  const maxDist = Math.max(1, ...stats.distribution);
-
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -62,30 +59,70 @@ export default function StatsBoard({ stats }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Distribution */}
+        {/* Distribution grid */}
         <div className="paper-card p-4">
           <h3 className="mb-3 font-display text-sm font-semibold text-ink">
-            Distribución de calificaciones
+            Cuántas de cada calificación
           </h3>
-          <div className="space-y-2">
-            {stats.distribution.map((count, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="w-3 text-right text-xs text-ink-soft">
-                  {i + 1}
-                </span>
-                <span className="text-[#e3b169]">★</span>
-                <div className="h-3 flex-1 overflow-hidden rounded-full bg-line/40">
-                  <motion.div
-                    className="h-full rounded-full bg-pink"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(count / maxDist) * 100}%` }}
-                    transition={{ duration: 0.5 }}
-                  />
-                </div>
-                <span className="w-4 text-xs text-ink-soft">{count}</span>
-              </div>
-            ))}
-          </div>
+
+          {stats.distributionByUser.length === 0 || stats.totalRatings === 0 ? (
+            <p className="text-xs text-ink-soft">
+              Todavía no hay calificaciones.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[11px]">
+                <thead>
+                  <tr>
+                    <th className="pb-1 text-left font-medium text-ink-soft">
+                      Calif.
+                    </th>
+                    {stats.distributionByUser.map((u) => (
+                      <th
+                        key={u.userId}
+                        className="pb-1 text-center font-semibold"
+                      >
+                        <div
+                          className="mx-auto mb-0.5 h-2 w-2 rounded-full"
+                          style={{ backgroundColor: u.color }}
+                        />
+                        <span className="text-ink">{u.name}</span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 10 }, (_, i) => {
+                    const value = (i + 1) / 2;
+                    const label =
+                      value % 1 === 0 ? `${value}` : `${value.toFixed(1)}`;
+                    const hasAny = stats.distributionByUser.some(
+                      (u) => u.counts[i] > 0
+                    );
+                    if (!hasAny) return null;
+                    return (
+                      <tr key={i} className="border-t border-line/60">
+                        <td className="py-1 pr-2 text-ink-soft">{label}★</td>
+                        {stats.distributionByUser.map((u) => (
+                          <td key={u.userId} className="py-1 text-center">
+                            <span
+                              className={`inline-block min-w-[18px] rounded-full px-1 ${
+                                u.counts[i] > 0
+                                  ? "bg-pink/20 font-semibold text-ink"
+                                  : "text-ink-soft/30"
+                              }`}
+                            >
+                              {u.counts[i] || "·"}
+                            </span>
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Per user */}
