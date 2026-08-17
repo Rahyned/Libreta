@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, sans-serif;
+  color: #8b7355;
+  background-color: #fdfbf7;
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(74, 55, 40, 0.045) 1px,
+    transparent 0
+  );
+  background-size: 26px 26px;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Poppins", system-ui, sans-serif;
+  color: #4a3728;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #e8dcc8;
+  border-radius: 9999px;
+  border: 2px solid #fdfbf7;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  .paper-card {
+    @apply rounded-card border border-line bg-white/70 shadow-sm;
+  }
+  .dashed-rule {
+    @apply border-b border-dashed border-line;
+  }
+}
