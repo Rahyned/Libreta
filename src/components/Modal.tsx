@@ -6,10 +6,11 @@ interface Props {
   open: boolean;
   onClose: () => void;
   title: string;
+  accent?: string;
   children: ReactNode;
 }
 
-export default function Modal({ open, onClose, title, children }: Props) {
+export default function Modal({ open, onClose, title, accent, children }: Props) {
   return (
     <AnimatePresence>
       {open && (
@@ -22,6 +23,7 @@ export default function Modal({ open, onClose, title, children }: Props) {
         >
           <motion.div
             className="paper-card w-full max-w-md bg-paper p-6"
+            style={accent ? { borderColor: accent, borderWidth: 2 } : undefined}
             initial={{ scale: 0.95, y: 10, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.95, y: 10, opacity: 0 }}

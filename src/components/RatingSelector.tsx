@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Star } from "lucide-react";
+import { Star, StarHalf } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MOODS, moodToString } from "../lib/constants";
 import type { Movie, Rating, RatingInput, User } from "../types";
@@ -43,6 +43,7 @@ export default function RatingSelector({
   }, [userId, ratings, open]);
 
   const activeUser = users.find((u) => u.id === userId);
+  const accent = activeUser?.color ?? "#d4a5a5";
 
   const handleSubmit = () => {
     if (!rating) return;
@@ -56,34 +57,45 @@ export default function RatingSelector({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={`Calificar · ${movie.title}`}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Calificar · ${movie.title}`}
+      accent={accent}
+    >
       {/* User switch */}
       {users.length > 1 && (
         <div className="mb-4 flex gap-2">
-          {users.map((u) => (
-            <button
-              key={u.id}
-              onClick={() => setUserId(u.id)}
-              className={`flex-1 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                userId === u.id
-                  ? "border-ink/20 bg-paper text-ink shadow-sm"
-                  : "border-line text-ink-soft hover:bg-line/40"
-              }`}
-            >
-              <span
-                className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full align-middle"
-                style={{ backgroundColor: u.color }}
-              />
-              {u.name}
-            </button>
-          ))}
+          {users.map((u) => {
+            const active = userId === u.id;
+            return (
+              <button
+                key={u.id}
+                onClick={() => setUserId(u.id)}
+                className={`flex-1 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                  active
+                    ? "text-ink shadow-sm"
+                    : "border-line text-ink-soft hover:bg-line/40"
+                }`}
+                style={active ? { backgroundColor: u.color } : undefined}
+              >
+                <span
+                  className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full align-middle"
+                  style={{ backgroundColor: active ? undefined : u.color }}
+                />
+                {u.name}
+              </button>
+            );
+          })}
         </div>
       )}
 
       {/* Stars */}
       <div className="mb-4 flex items-center justify-center gap-1 py-2">
         {[1, 2, 3, 4, 5].map((i) => {
-          const filled = i <= (hovered || rating);
+          const shown = hovered || rating;
+          const full = shown >= i;
+          const half = shown >= i - 0.5;
           return (
             <motion.button
               key={i}
@@ -91,18 +103,32 @@ export default function RatingSelector({
               whileHover={{ scale: 1.25 }}
               whileTap={{ scale: 0.9 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              onMouseEnter={() => setHovered(i)}
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setHovered(
+                  e.clientX < rect.left + rect.width / 2 ? i - 0.5 : i
+                );
+              }}
               onMouseLeave={() => setHovered(0)}
-              onClick={() => setRating(i)}
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setRating(
+                  e.clientX < rect.left + rect.width / 2 ? i - 0.5 : i
+                );
+              }}
               className="p-0.5"
-              aria-label={`${i} estrellas`}
+              aria-label={`${i} ${i > 1 ? "estrellas" : "estrella"} o media`}
             >
-              <Star
-                size={34}
-                className={
-                  filled ? "fill-[#e3b169] text-[#e3b169]" : "text-line"
-                }
-              />
+              {full ? (
+                <Star size={34} className="fill-[#e3b169] text-[#e3b169]" />
+              ) : half ? (
+                <StarHalf
+                  size={34}
+                  className="fill-[#e3b169] text-[#e3b169]"
+                />
+              ) : (
+                <Star size={34} className="text-line" />
+              )}
             </motion.button>
           );
         })}
@@ -156,7 +182,8 @@ export default function RatingSelector({
         <button
           onClick={handleSubmit}
           disabled={!rating}
-          className="rounded-full bg-pink px-5 py-2 text-sm font-semibold text-ink shadow-sm transition hover:bg-pink-deep disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-full px-5 py-2 text-sm font-semibold text-ink shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ backgroundColor: accent }}
         >
           Guardar
         </button>
