@@ -86,6 +86,9 @@ export const useMovieStore = create<MovieState>((set, get) => ({
       watched_at: watched ? current.watched_at : null,
       added_date: current.added_date,
       watched,
+      kind: current.kind,
+      seasons: current.seasons,
+      status: current.status,
     });
     set((s) => ({
       movies: s.movies.map((m) => (m.movie.id === id ? { ...m, movie: updated.movie } : m)),

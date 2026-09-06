@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Clapperboard, Eye, Home, Pencil, Star, Trash2, X } from "lucide-react";
+import { Clapperboard, Eye, Home, Pencil, Star, Trash2, Tv, X } from "lucide-react";
 import { useState } from "react";
 import { formatDate, parseMood } from "../lib/constants";
 import type { Movie, Rating, User } from "../types";
@@ -99,6 +99,24 @@ export default function MovieCard({
                   {movie.watched_at}
                 </span>
               )}
+              {movie.kind === "series" && (
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-pink/25 px-2 py-0.5 text-[11px] font-semibold text-ink">
+                    <Tv size={11} />
+                    Serie
+                  </span>
+                  {movie.seasons != null && (
+                    <span className="text-[11px] text-ink-soft">
+                      {movie.seasons} {movie.seasons === 1 ? "temporada" : "temporadas"}
+                    </span>
+                  )}
+                  {movie.status && (
+                    <span className="rounded-full bg-blue/20 px-2 py-0.5 text-[11px] text-ink-soft">
+                      {movie.status}
+                    </span>
+                  )}
+                </>
+              )}
               <span className="text-[11px] text-ink-soft/60">
                 {formatDate(movie.added_date)}
               </span>
@@ -119,33 +137,40 @@ export default function MovieCard({
             const r = ratingFor(ratings, user.id);
             const mood = parseMood(r?.mood ?? null);
             return (
-              <div key={user.id} className="flex items-center gap-2">
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: user.color }}
-                />
-                <span className="w-16 shrink-0 truncate text-xs font-medium text-ink-soft">
-                  {user.name}
-                </span>
-                {r ? (
-                  <span className="flex items-center gap-1.5">
-                    <Stars value={r.rating} />
-                    {mood && (
-                      <span
-                        className="text-sm leading-none"
-                        title={mood.label}
-                      >
-                        {mood.emoji}
-                      </span>
-                    )}
+              <div key={user.id}>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: user.color }}
+                  />
+                  <span className="w-16 shrink-0 truncate text-xs font-medium text-ink-soft">
+                    {user.name}
                   </span>
-                ) : (
-                  <button
-                    onClick={onRate}
-                    className="text-xs text-ink-soft/60 transition hover:text-pink-deep"
-                  >
-                    sin calificar
-                  </button>
+                  {r ? (
+                    <span className="flex items-center gap-1.5">
+                      <Stars value={r.rating} />
+                      {mood && (
+                        <span
+                          className="text-sm leading-none"
+                          title={mood.label}
+                        >
+                          {mood.emoji}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={onRate}
+                      className="text-xs text-ink-soft/60 transition hover:text-pink-deep"
+                    >
+                      sin calificar
+                    </button>
+                  )}
+                </div>
+                {r?.personal_note && (
+                  <p className="mt-1 font-handwritten text-lg leading-tight text-ink">
+                    “{r.personal_note}”
+                  </p>
                 )}
               </div>
             );
@@ -162,7 +187,7 @@ export default function MovieCard({
         <div className="flex items-center justify-between border-t border-line/70 bg-paper/40 px-4 py-2">
           <button
             onClick={onRate}
-            className="inline-flex items-center gap-1.5 rounded-full bg-pink px-3 py-1 text-xs font-semibold text-ink transition hover:bg-pink-deep"
+            className="inline-flex items-center gap-1.5 rounded-full bg-pink px-3 py-1 text-xs font-semibold text-accent-ink transition hover:bg-pink-deep"
           >
             <Star size={13} className="fill-current" />
             Calificar
@@ -190,7 +215,7 @@ export default function MovieCard({
       <AnimatePresence>
         {showPoster && movie.poster_url && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 p-6 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/70 p-6 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

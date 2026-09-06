@@ -4,6 +4,10 @@ export interface User {
   color: string;
 }
 
+export type MediaKind = "movie" | "series";
+
+export type SeriesStatus = "Completada" | "En curso" | "Pausada";
+
 export interface Movie {
   id: string;
   title: string;
@@ -14,6 +18,9 @@ export interface Movie {
   notes: string | null;
   watched_at: string | null;
   watched: boolean;
+  kind: MediaKind;
+  seasons: number | null;
+  status: SeriesStatus | null;
 }
 
 export interface Rating {
@@ -40,6 +47,9 @@ export interface MovieInput {
   watched_at?: string | null;
   added_date?: string | null;
   watched?: boolean;
+  kind?: MediaKind;
+  seasons?: number | null;
+  status?: SeriesStatus | null;
 }
 
 export interface RatingInput {
@@ -87,4 +97,11 @@ export interface MovieSearchResult {
   genres: string[];
   poster_url: string;
   source: string;
+}
+
+export interface BackupResult {
+  users_imported: number;
+  movies_imported: number;
+  movies_merged: number;
+  ratings_imported: number;
 }

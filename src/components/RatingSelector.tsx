@@ -182,7 +182,7 @@ export default function RatingSelector({
         <button
           onClick={handleSubmit}
           disabled={!rating}
-          className="rounded-full px-5 py-2 text-sm font-semibold text-ink shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-full px-5 py-2 text-sm font-semibold text-accent-ink shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
           style={{ backgroundColor: accent }}
         >
           Guardar

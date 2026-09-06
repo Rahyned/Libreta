@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  BackupResult,
+  MediaKind,
   Movie,
   MovieInput,
   MovieSearchResult,
@@ -21,9 +23,17 @@ export interface Api {
   updateMovie(id: string, input: MovieInput): Promise<MovieWithRatings>;
   deleteMovie(id: string): Promise<void>;
   saveRating(input: RatingInput): Promise<Rating>;
-  searchMovie(title: string, year?: number | null): Promise<MovieSearchResult[]>;
+  searchMovie(
+    title: string,
+    year?: number | null,
+    kind?: MediaKind
+  ): Promise<MovieSearchResult[]>;
   getSetting(key: string): Promise<string | null>;
   setSetting(key: string, value: string): Promise<void>;
+  exportBackup(): Promise<string>;
+  importBackup(contents: string): Promise<BackupResult>;
+  writeBackupFile(path: string, contents: string): Promise<void>;
+  readBackupFile(path: string): Promise<string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -39,10 +49,16 @@ const realApi: Api = {
     invoke<MovieWithRatings>("update_movie", { id, input }),
   deleteMovie: (id) => invoke<void>("delete_movie", { id }),
   saveRating: (input) => invoke<Rating>("save_rating", { input }),
-  searchMovie: (title, year) =>
-    invoke<MovieSearchResult[]>("search_movie", { title, year }),
+  searchMovie: (title, year, kind) =>
+    invoke<MovieSearchResult[]>("search_movie", { title, year, kind }),
   getSetting: (key) => invoke<string | null>("get_setting", { key }),
   setSetting: (key, value) => invoke<void>("set_setting", { key, value }),
+  exportBackup: () => invoke<string>("export_backup"),
+  importBackup: (contents) =>
+    invoke<BackupResult>("import_backup", { contents }),
+  writeBackupFile: (path, contents) =>
+    invoke<void>("write_backup_file", { path, contents }),
+  readBackupFile: (path) => invoke<string>("read_backup_file", { path }),
 };
 
 // ---------------------------------------------------------------------------
@@ -81,6 +97,9 @@ function sampleDb(): MockDb {
       notes: "Película épica y hermosa",
       watched_at: "En el Cine",
       watched: true,
+      kind: "movie",
+      seasons: null,
+      status: null,
     },
     {
       id: "m2",
@@ -92,6 +111,9 @@ function sampleDb(): MockDb {
       notes: null,
       watched_at: "En Casa",
       watched: true,
+      kind: "movie",
+      seasons: null,
+      status: null,
     },
     {
       id: "m3",
@@ -103,6 +125,9 @@ function sampleDb(): MockDb {
       notes: "Wong Kar-wai en su máxima elegancia",
       watched_at: "En Casa",
       watched: true,
+      kind: "movie",
+      seasons: null,
+      status: null,
     },
     {
       id: "m4",
@@ -114,6 +139,37 @@ function sampleDb(): MockDb {
       notes: "La vimos mil veces y no cansa",
       watched_at: "En Casa",
       watched: true,
+      kind: "movie",
+      seasons: null,
+      status: null,
+    },
+    {
+      id: "s1",
+      title: "The Bear",
+      year: 2022,
+      genre: "Comedia",
+      added_date: "2026-08-12 12:00:00",
+      poster_url: null,
+      notes: "La cocina y la ansiedad, nada más",
+      watched_at: "En Casa",
+      watched: true,
+      kind: "series",
+      seasons: 3,
+      status: "Completada",
+    },
+    {
+      id: "s2",
+      title: "Arcane",
+      year: 2021,
+      genre: "Animación",
+      added_date: "2026-08-11 12:00:00",
+      poster_url: null,
+      notes: null,
+      watched_at: "En Casa",
+      watched: true,
+      kind: "series",
+      seasons: 2,
+      status: "En curso",
     },
   ];
 
@@ -190,6 +246,42 @@ function sampleDb(): MockDb {
       personal_note: "Nuestra favorita",
       rated_date: "2026-08-13 12:00:00",
     },
+    {
+      id: "r9",
+      movie_id: "s1",
+      user_id: "user1",
+      rating: 4.5,
+      mood: "😄 Me encantó",
+      personal_note: "Carmy y su equipo",
+      rated_date: "2026-08-12 12:00:00",
+    },
+    {
+      id: "r10",
+      movie_id: "s1",
+      user_id: "user2",
+      rating: 4,
+      mood: "🙂 Me gustó",
+      personal_note: null,
+      rated_date: "2026-08-12 12:00:00",
+    },
+    {
+      id: "r11",
+      movie_id: "s2",
+      user_id: "user1",
+      rating: 5,
+      mood: "😍 Increíble",
+      personal_note: "Obra maestra animada",
+      rated_date: "2026-08-11 12:00:00",
+    },
+    {
+      id: "r12",
+      movie_id: "s2",
+      user_id: "user2",
+      rating: 4.5,
+      mood: "😍 Increíble",
+      personal_note: null,
+      rated_date: "2026-08-11 12:00:00",
+    },
   ];
 
   return { users, movies, ratings };
@@ -233,12 +325,16 @@ function saveSettings(s: Record<string, string>): void {
 
 async function mockSearchPoster(
   title: string,
-  _year?: number | null
+  _year?: number | null,
+  kind?: MediaKind
 ): Promise<MovieSearchResult[]> {
   const q = title.trim();
   if (!q) return [];
 
-  const variants = [q, `${q} (film)`, `${q} (película)`];
+  const isSeries = kind === "series";
+  const variants = isSeries
+    ? [q, `${q} (TV series)`, `${q} (serie de televisión)`]
+    : [q, `${q} (film)`, `${q} (película)`];
 
   for (const wiki of ["en", "es"]) {
     const url = `https://${wiki}.wikipedia.org/w/api.php`;
@@ -298,7 +394,12 @@ const mockApi: Api = {
   getMovies: async () => {
     const db = loadMock();
     return db.movies.map((movie) => ({
-      movie,
+      movie: {
+        ...movie,
+        kind: movie.kind ?? "movie",
+        seasons: movie.seasons ?? null,
+        status: movie.status ?? null,
+      },
       ratings: db.ratings.filter((r) => r.movie_id === movie.id),
     }));
   },
@@ -315,6 +416,9 @@ const mockApi: Api = {
       notes: input.notes ?? null,
       watched_at: input.watched_at ?? null,
       watched: input.watched ?? true,
+      kind: input.kind ?? "movie",
+      seasons: input.seasons ?? null,
+      status: input.status ?? null,
     };
     db.movies.unshift(movie);
     saveMock(db);
@@ -335,6 +439,9 @@ const mockApi: Api = {
       watched_at: input.watched_at ?? null,
       added_date: input.added_date ?? db.movies[idx].added_date,
       watched: input.watched ?? db.movies[idx].watched,
+      kind: input.kind ?? db.movies[idx].kind ?? "movie",
+      seasons: input.seasons ?? db.movies[idx].seasons ?? null,
+      status: input.status ?? db.movies[idx].status ?? null,
     };
     saveMock(db);
     return {
@@ -388,6 +495,89 @@ const mockApi: Api = {
     const s = loadSettings();
     s[key] = value;
     saveSettings(s);
+  },
+
+  exportBackup: async () => {
+    const db = loadMock();
+    return JSON.stringify({
+      app: "movie-libreta",
+      schemaVersion: 1,
+      users: db.users,
+      movies: db.movies,
+      ratings: db.ratings,
+    });
+  },
+
+  importBackup: async (contents) => {
+    const data = JSON.parse(contents) as {
+      users?: User[];
+      movies?: Movie[];
+      ratings?: Rating[];
+    };
+    const db = loadMock();
+    let users_imported = 0;
+    let movies_imported = 0;
+    let movies_merged = 0;
+    let ratings_imported = 0;
+
+    const movieMap = new Map<string, string>();
+
+    for (const u of data.users ?? []) {
+      if (db.users.some((x) => x.id === u.id) || !u.id) continue;
+      db.users.push(u);
+      users_imported++;
+    }
+
+    for (const m of data.movies ?? []) {
+      if (!m.title?.trim()) continue;
+      const kind = m.kind ?? "movie";
+      const dup = db.movies.find(
+        (x) =>
+          x.id === m.id ||
+          (x.title.toLowerCase() === m.title.toLowerCase() &&
+            x.year === m.year &&
+            (x.kind ?? "movie") === kind)
+      );
+      if (dup) {
+        movieMap.set(m.id, dup.id);
+        movies_merged++;
+        continue;
+      }
+      const fresh: Movie = {
+        ...m,
+        id: uid(),
+        kind,
+        seasons: m.seasons ?? null,
+        status: m.status ?? null,
+      };
+      db.movies.unshift(fresh);
+      movieMap.set(m.id, fresh.id);
+      movies_imported++;
+    }
+
+    for (const r of data.ratings ?? []) {
+      const movieId = movieMap.get(r.movie_id);
+      if (!movieId || !db.users.some((u) => u.id === r.user_id)) continue;
+      if (db.ratings.some((x) => x.movie_id === movieId && x.user_id === r.user_id)) continue;
+      db.ratings.push({
+        ...r,
+        id: uid(),
+        movie_id: movieId,
+        rating: Math.min(5, Math.max(1, r.rating)),
+      });
+      ratings_imported++;
+    }
+
+    saveMock(db);
+    return { users_imported, movies_imported, movies_merged, ratings_imported };
+  },
+
+  writeBackupFile: async () => {
+    throw new Error("Solo disponible en la app de escritorio");
+  },
+
+  readBackupFile: async () => {
+    throw new Error("Solo disponible en la app de escritorio");
   },
 };
 

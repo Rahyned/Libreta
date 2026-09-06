@@ -1,6 +1,6 @@
-# Libreta de Películas 🎬📓
+# Libreta de Películas y Series 🎬📺
 
-Aplicación de escritorio nativa para anotar, rankear y comparar películas, con estética de libreta cute y colores pastel.
+Aplicación de escritorio nativa para anotar, rankear y comparar películas y series **en pareja**, con estética de libreta cute y colores pastel.
 
 > "una libreta para lo que vemos juntos"
 
@@ -8,7 +8,7 @@ Aplicación de escritorio nativa para anotar, rankear y comparar películas, con
 
 ## ¿Qué es?
 
-Libreta de Películas es un diario cinéfilo compartido para dos personas. Cada usuario califica las películas que vieron juntos con estrellas, un emoji de humor y una nota personal; luego pueden comparar quién la disfrutó más, ver estadísticas del historial y descubrir su película favorita en común.
+Libreta de Películas y Series es un diario cinéfilo compartido para dos personas. Cada usuario califica las películas y series que vieron juntos con estrellas, un emoji de humor y una nota personal; luego pueden comparar quién la disfrutó más, ver estadísticas del historial y descubrir su título favorito en común.
 
 Todo se guarda **localmente** en la máquina: privacidad total para la pareja, sin cuentas ni nube.
 
@@ -16,9 +16,10 @@ Todo se guarda **localmente** en la máquina: privacidad total para la pareja, s
 
 ## ✨ Features
 
-### Gestión de películas (CRUD)
-- **Agregar / editar / eliminar** películas con: título (obligatorio), año, género, póster, notas, dónde la vieron (`En Casa` / `En el Cine`) y fecha en que la agregaron.
-- **Autocompletado de póster**: mientras escribes el título, la app busca el póster automáticamente (con *debounce* de 600 ms), y rellena año, género y póster del resultado. **TMDB** como fuente principal (clave opcional en Ajustes) y **Wikipedia** como respaldo sin configuración.
+### Gestión de películas y series (CRUD)
+- **Agregar / editar / eliminar** títulos con: tipo (película o serie), título (obligatorio), año, género, póster, notas, dónde lo vieron (`En Casa` / `En el Cine`) y fecha en que lo agregaron.
+- **Series**: sección propia en el sidebar con lista y estadísticas; campos opcionales de **temporadas** y **estado** (`Completada` / `En curso` / `Pausada`).
+- **Autocompletado de póster**: mientras escribes el título, la app busca el póster automáticamente (con *debounce* de 600 ms), y rellena año, género y póster del resultado. **TMDB** como fuente principal (clave opcional en Ajustes; usa `/search/movie` o `/search/tv` según el tipo) y **Wikipedia** como respaldo sin configuración.
 
 ### Rankeo en pareja
 - Calificación de **1 a 5 estrellas** con animación *spring*.
@@ -27,16 +28,17 @@ Todo se guarda **localmente** en la máquina: privacidad total para la pareja, s
 - Dos usuarios por defecto: cada uno con su color identificativo.
 
 ### Comparación
-- Vista lado a lado del rating de cada uno por película.
+- Vista lado a lado del rating de cada uno por título.
+- Filtro **Todo / Películas / Series** y badge "Serie" por fila.
 - Promedio de cada persona y **promedio combinado**.
-- **Película favorita de cada uno**.
-- Resumen de dónde la vieron (Casa 🏠 vs Cine 🎬).
+- **Favorito de cada uno**.
+- Resumen de dónde lo vieron (Casa 🏠 vs Cine 🎬).
 - **Filas resaltadas** cuando hay diferencias de más de 1 estrella: "las mejores para debatir".
 
 ### Estadísticas
-- Total de películas y calificaciones, y promedio general.
+- Total de títulos y calificaciones, y promedio general (filtradas por tipo).
 - **Histograma** de distribución de calificaciones (1 a 5 estrellas).
-- Promedio **por persona**, top de cada uno y **mejor película juntos** (ambos con 4+ estrellas).
+- Promedio **por persona**, top de cada uno y **mejor título juntos** (ambos con 4+ estrellas).
 - Agrupaciones por **género**, **año** y **lugar** de visionado.
 
 ### Filtros y búsqueda
@@ -126,7 +128,11 @@ CREATE TABLE movies (
     added_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     poster_url TEXT,
     notes TEXT,
-    watched_at TEXT
+    watched_at TEXT,
+    watched INTEGER DEFAULT 1,    -- 0 = pendiente (watchlist)
+    kind TEXT DEFAULT 'movie',    -- 'movie' | 'series'
+    seasons INTEGER,              -- solo series
+    status TEXT                   -- 'Completada' | 'En curso' | 'Pausada' (solo series)
 );
 
 CREATE TABLE ratings (
@@ -148,7 +154,7 @@ CREATE TABLE settings (
 );
 ```
 
-> `db::init` además ejecuta `ensure_column` para migraciones livianas de columnas nuevas (p. ej. `movies.watched_at`).
+> `db::init` además ejecuta `ensure_column` para migraciones livianas de columnas nuevas (p. ej. `movies.watched_at`, `movies.kind`, `movies.seasons`, `movies.status`).
 
 ---
 
@@ -179,8 +185,8 @@ npm run tauri build      # generar instalador
 
 ```
 ├── src/                        # Frontend React + TS
-│   ├── components/             # MovieCard, RatingSelector, MovieForm, ComparisonView, StatsBoard, Modal, Stars, MovieList
-│   ├── pages/                  # Home, Comparison, Settings
+│   ├── components/             # MovieCard, RatingSelector, MovieForm, MovieList, LibraryPage, ComparisonView, StatsBoard, Modal, Stars
+│   ├── pages/                  # Home, Series, Comparison, Settings
 │   ├── store/useMovieStore.ts  # Estado global con Zustand
 │   ├── lib/
 │   │   ├── api.ts              # Interfaz Api + backend real (Tauri) y mock (localStorage)
@@ -216,6 +222,6 @@ npm run tauri build      # generar instalador
 - Búsqueda automática de pósters también en el modo mock.
 - Más lugares de visionado y etiquetas personalizadas.
 - Modo oscuro "libreta nocturna" 🌙.
+- Rankear por temporada/capítulo dentro de una serie.
 
 ---
-

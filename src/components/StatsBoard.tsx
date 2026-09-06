@@ -5,11 +5,12 @@ import {
   HeartHandshake,
   Home,
 } from "lucide-react";
-import type { Stats } from "../types";
+import type { MediaKind, Stats } from "../types";
 import Stars from "./Stars";
 
 interface Props {
   stats: Stats;
+  kind?: MediaKind;
 }
 
 function StatCard({
@@ -32,13 +33,13 @@ function StatCard({
   );
 }
 
-export default function StatsBoard({ stats }: Props) {
+export default function StatsBoard({ stats, kind = "movie" }: Props) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           icon={<Clapperboard size={18} />}
-          label="Películas"
+          label={kind === "series" ? "Series" : "Películas"}
           value={String(stats.totalMovies)}
         />
         <StatCard

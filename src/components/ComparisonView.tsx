@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
-import { Clapperboard, Heart, Home, TrendingUp } from "lucide-react";
-import { useMemo } from "react";
+import { Clapperboard, Heart, Home, TrendingUp, Tv } from "lucide-react";
+import { useMemo, useState } from "react";
 import { formatDate } from "../lib/constants";
-import type { MovieWithRatings, User } from "../types";
+import type { MediaKind, MovieWithRatings, User } from "../types";
 import Stars from "./Stars";
 
 interface Props {
@@ -11,6 +11,8 @@ interface Props {
   meId: string | null;
   partnerId: string | null;
 }
+
+type Scope = "all" | MediaKind;
 
 function avg(ratings: { rating: number }[]): number {
   if (!ratings.length) return 0;
@@ -25,9 +27,18 @@ export default function ComparisonView({
 }: Props) {
   const me = users.find((u) => u.id === meId) ?? users[0];
   const partner = users.find((u) => u.id === partnerId) ?? users[1];
+  const [scope, setScope] = useState<Scope>("all");
+
+  const scoped = useMemo(
+    () =>
+      scope === "all"
+        ? movies
+        : movies.filter((m) => (m.movie.kind ?? "movie") === scope),
+    [movies, scope]
+  );
 
   const rows = useMemo(() => {
-    return movies
+    return scoped
       .map(({ movie, ratings }) => {
         const my = ratings.find((r) => r.user_id === me?.id)?.rating ?? null;
         const theirs =
@@ -35,7 +46,7 @@ export default function ComparisonView({
         return { movie, my, theirs };
       })
       .filter((r) => r.my !== null || r.theirs !== null);
-  }, [movies, me, partner]);
+  }, [scoped, me, partner]);
 
   const myAvg = avg(rows.filter((r) => r.my !== null).map((r) => ({ rating: r.my! })));
   const theirAvg = avg(
@@ -59,21 +70,38 @@ export default function ComparisonView({
 
   if (!me || !partner) {
     return (
-      <p className="rounded-card border border-dashed border-line bg-white/50 p-8 text-center text-ink-soft">
+      <p className="rounded-card border border-dashed border-line bg-surface/50 p-8 text-center text-ink-soft">
         Configura los dos usuarios en Ajustes para comparar.
       </p>
     );
   }
 
-  const casaCount = movies.filter(
+  const casaCount = scoped.filter(
     (m) => m.movie.watched_at === "En Casa"
   ).length;
-  const cineCount = movies.filter(
+  const cineCount = scoped.filter(
     (m) => m.movie.watched_at === "En el Cine"
   ).length;
 
   return (
     <div className="space-y-6">
+      {/* Scope filter */}
+      <div className="flex rounded-full border border-line bg-surface/50 p-1 sm:w-fit">
+        {(["all", "movie", "series"] as Scope[]).map((s) => (
+          <button
+            key={s}
+            onClick={() => setScope(s)}
+            className={`flex-1 rounded-full px-5 py-1.5 text-sm font-semibold transition sm:flex-none ${
+              scope === s
+                ? "bg-pink text-accent-ink shadow-sm"
+                : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            {s === "all" ? "Todo" : s === "movie" ? "Películas" : "Series"}
+          </button>
+        ))}
+      </div>
+
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="paper-card p-4">
@@ -130,8 +158,8 @@ export default function ComparisonView({
       {/* Best each */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {[
-          { user: me, row: myTop, label: "Película favorita" },
-          { user: partner, row: theirTop, label: "Película favorita" },
+          { user: me, row: myTop, label: "Favorito/a" },
+          { user: partner, row: theirTop, label: "Favorito/a" },
         ].map(({ user, row, label }) => (
           <div key={user.id} className="paper-card p-4">
             <p className="text-xs font-medium text-ink-soft">{label}</p>
@@ -157,7 +185,7 @@ export default function ComparisonView({
       {/* Comparison list */}
       <div className="paper-card overflow-hidden">
         <div className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-dashed border-line px-4 py-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">
-          <span>Película</span>
+          <span>Película o serie</span>
           <span className="w-20 text-center" style={{ color: me.color }}>
             {me.name}
           </span>
@@ -180,7 +208,15 @@ export default function ComparisonView({
                 }`}
               >
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-ink">{movie.title}</p>
+                  <p className="truncate font-medium text-ink">
+                    {movie.title}
+                    {movie.kind === "series" && (
+                      <span className="ml-1.5 inline-flex translate-y-[-1px] items-center gap-0.5 rounded-full bg-pink/25 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-ink">
+                        <Tv size={9} />
+                        Serie
+                      </span>
+                    )}
+                  </p>
                   <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                     <p className="shrink-0 text-xs text-ink-soft">
                       {[movie.year, movie.genre].filter(Boolean).join(" · ") || ""}
@@ -222,7 +258,7 @@ export default function ComparisonView({
         )}
       </div>
 
-      <div className="flex items-center gap-2 rounded-card border border-dashed border-line bg-white/50 px-4 py-3 text-sm text-ink-soft">
+      <div className="flex items-center gap-2 rounded-card border border-dashed border-line bg-surface/50 px-4 py-3 text-sm text-ink-soft">
         <Heart size={16} className="text-pink-deep" />
         Las filas resaltadas indican diferencias de más de 1 estrella entre
         ustedes. ¡Esas son las mejores para debatir!

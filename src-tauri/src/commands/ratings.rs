@@ -42,7 +42,7 @@ pub fn save_rating(state: State<AppState>, input: RatingInput) -> Result<Rating,
         |row| row.get(0),
     );
 
-    match existing {
+    let result: Result<Rating, String> = match existing {
         Ok(id) => {
             conn.execute(
                 "UPDATE ratings SET rating = ?1, mood = ?2, personal_note = ?3,
@@ -70,5 +70,16 @@ pub fn save_rating(state: State<AppState>, input: RatingInput) -> Result<Rating,
             rating_by_id(&conn, &id).map_err(|e| e.to_string())
         }
         Err(e) => Err(e.to_string()),
+    };
+
+    match &result {
+        Ok(r) => log::info!(
+            "Valoración guardada: usuario {} película {} = {}",
+            r.user_id,
+            r.movie_id,
+            r.rating
+        ),
+        Err(e) => log::error!("Error al guardar valoración: {e}"),
     }
+    result
 }

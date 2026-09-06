@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Clapperboard, Home } from "lucide-react";
+import { Clapperboard, Home, MonitorPlay } from "lucide-react";
 import { api } from "../lib/api";
-import { GENRES, WATCHED_AT_OPTIONS } from "../lib/constants";
-import type { Movie, MovieInput, MovieSearchResult } from "../types";
+import { GENRES, SERIES_STATUS, WATCHED_AT_OPTIONS } from "../lib/constants";
+import type {
+  MediaKind,
+  Movie,
+  MovieInput,
+  MovieSearchResult,
+  SeriesStatus,
+} from "../types";
 import Modal from "./Modal";
 
 interface Props {
@@ -10,13 +16,16 @@ interface Props {
   onClose: () => void;
   onSubmit: (input: MovieInput) => void;
   initial?: Movie | null;
+  kind?: MediaKind;
 }
 
 type PosterStatus = "idle" | "searching" | "found" | "notfound";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
+export default function MovieForm({ open, onClose, onSubmit, initial, kind }: Props) {
+  const defaultKind: MediaKind = initial?.kind ?? kind ?? "movie";
+  const [type, setType] = useState<MediaKind>(defaultKind);
   const [title, setTitle] = useState("");
   const [year, setYear] = useState("");
   const [genre, setGenre] = useState("");
@@ -25,6 +34,8 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
   const [watchedAt, setWatchedAt] = useState<string>("");
   const [watched, setWatched] = useState(true);
   const [date, setDate] = useState(today);
+  const [seasons, setSeasons] = useState("");
+  const [status, setStatus] = useState<SeriesStatus | "">("");
   const [error, setError] = useState<string | null>(null);
   const [posterStatus, setPosterStatus] = useState<PosterStatus>("idle");
   const [candidates, setCandidates] = useState<MovieSearchResult[]>([]);
@@ -36,6 +47,7 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
 
   useEffect(() => {
     if (open) {
+      setType(initial?.kind ?? kind ?? "movie");
       setTitle(initial?.title ?? "");
       setYear(initial?.year ? String(initial.year) : "");
       setGenre(initial?.genre ?? "");
@@ -44,6 +56,8 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
       setWatchedAt(initial?.watched_at ?? "");
       setWatched(initial?.watched ?? true);
       setDate(initial?.added_date ? initial.added_date.slice(0, 10) : today());
+      setSeasons(initial?.seasons ? String(initial.seasons) : "");
+      setStatus(initial?.status ?? "");
       setError(null);
       setPosterStatus("idle");
       setCandidates([]);
@@ -51,7 +65,7 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
       manualPickRef.current = false;
       searchToken.current += 1;
     }
-  }, [open, initial]);
+  }, [open, initial, kind]);
 
   useEffect(() => {
     if (!open) return;
@@ -70,7 +84,7 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
     debounceRef.current = setTimeout(async () => {
       const y = Number(year);
       const parsedYear = year.trim() && !Number.isNaN(y) ? y : null;
-      const result = await api.searchMovie(q, parsedYear);
+      const result = await api.searchMovie(q, parsedYear, type);
       if (token !== searchToken.current) return;
 
       if (result.length === 0) {
@@ -97,7 +111,7 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [title, year, open]);
+  }, [title, year, open, type]);
 
   const selectCandidate = (i: number) => {
     const c = candidates[i];
@@ -123,6 +137,15 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
       setError("El año no es válido.");
       return;
     }
+    let parsedSeasons: number | null = null;
+    if (type === "series" && seasons.trim()) {
+      const s = Number(seasons);
+      if (Number.isNaN(s) || s < 1) {
+        setError("Las temporadas deben ser un número válido.");
+        return;
+      }
+      parsedSeasons = Math.round(s);
+    }
     onSubmit({
       title: title.trim(),
       year: parsedYear,
@@ -132,6 +155,9 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
       watched_at: watched ? (watchedAt || null) : null,
       added_date: date || today(),
       watched,
+      kind: type,
+      seasons: parsedSeasons,
+      status: type === "series" ? (status || null) : null,
     });
   };
 
@@ -142,9 +168,42 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
     <Modal
       open={open}
       onClose={onClose}
-      title={initial ? "Editar película" : "Agregar película"}
+      title={
+        initial
+          ? initial.kind === "series"
+            ? "Editar serie"
+            : "Editar película"
+          : type === "series"
+            ? "Agregar serie"
+            : "Agregar película"
+      }
     >
       <div className="space-y-3">
+        {!initial && (
+          <div className="flex rounded-full border border-line bg-paper p-1">
+            {(["movie", "series"] as MediaKind[]).map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => {
+                  setType(k);
+                  setPosterStatus("idle");
+                  setCandidates([]);
+                  setSelectedIndex(-1);
+                }}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                  type === k
+                    ? "bg-pink text-accent-ink shadow-sm"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                {k === "series" ? <MonitorPlay size={15} /> : <Clapperboard size={15} />}
+                {k === "series" ? "Serie" : "Película"}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-soft">
             Título <span className="text-error">*</span>
@@ -157,7 +216,7 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
               setSelectedIndex(-1);
             }}
             className={inputClass}
-            placeholder="Ej. Oppenheimer"
+            placeholder={type === "series" ? "Ej. The Bear" : "Ej. Oppenheimer"}
             autoFocus
           />
         </div>
@@ -193,6 +252,40 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
             </datalist>
           </div>
         </div>
+
+        {type === "series" && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-ink-soft">
+                Temporadas
+              </label>
+              <input
+                value={seasons}
+                onChange={(e) => setSeasons(e.target.value)}
+                className={inputClass}
+                placeholder="3"
+                inputMode="numeric"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-ink-soft">
+                Estado
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as SeriesStatus | "")}
+                className={inputClass}
+              >
+                <option value="">—</option>
+                {SERIES_STATUS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
 
         <div>
           <button
@@ -276,7 +369,7 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
           )}
 
           {posterStatus === "found" && candidates.length > 0 && (
-            <div className="mt-1 flex gap-2 overflow-x-auto rounded-xl border border-line/70 bg-white/50 p-2">
+            <div className="mt-1 flex gap-2 overflow-x-auto rounded-xl border border-line/70 bg-surface/50 p-2">
               {candidates.map((c, i) => {
                 const active = i === selectedIndex;
                 return (
@@ -358,7 +451,7 @@ export default function MovieForm({ open, onClose, onSubmit, initial }: Props) {
           </button>
           <button
             onClick={handleSubmit}
-            className="rounded-full bg-pink px-5 py-2 text-sm font-semibold text-ink shadow-sm transition hover:bg-pink-deep"
+            className="rounded-full bg-pink px-5 py-2 text-sm font-semibold text-accent-ink shadow-sm transition hover:bg-pink-deep"
           >
             {initial ? "Guardar cambios" : "Agregar"}
           </button>

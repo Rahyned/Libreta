@@ -1,3 +1,4 @@
+pub mod backup;
 pub mod movies;
 pub mod poster;
 pub mod ratings;

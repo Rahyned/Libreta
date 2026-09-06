@@ -1,9 +1,62 @@
+@import "./assets/fonts/fonts.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: light;
+
+  --color-paper: 253 251 247;
+  --color-ink: 74 55 40;
+  --color-ink-soft: 111 90 58;
+  --color-pink: 212 165 165;
+  --color-pink-deep: 199 143 143;
+  --color-blue: 168 213 213;
+  --color-blue-deep: 143 189 189;
+  --color-peach: 255 228 212;
+  --color-line: 232 220 200;
+  --color-error: 169 68 68;
+  --color-error-deep: 169 68 68;
+  --color-success: 168 208 168;
+
+  --color-card: 253 251 247;
+  --color-surface: 255 253 248;
+  --color-overlay: 74 55 40;
+  --color-on-accent: 31 22 13;
+
+  --shadow-sm: 0 1px 3px rgba(74, 55, 40, 0.08);
+  --shadow-md: 0 4px 12px rgba(74, 55, 40, 0.12);
+  --shadow-sketch: 3px 3px 0 rgba(74, 55, 40, 0.12);
+
+  --paper-dot: rgba(74, 55, 40, 0.05);
+}
+
+:root.dark {
+  color-scheme: dark;
+
+  --color-paper: 33 27 22;
+  --color-ink: 238 230 212;
+  --color-ink-soft: 205 188 163;
+  --color-pink: 212 165 165;
+  --color-pink-deep: 199 143 143;
+  --color-blue: 168 213 213;
+  --color-blue-deep: 143 189 189;
+  --color-peach: 100 72 54;
+  --color-line: 74 62 49;
+  --color-error: 224 122 122;
+  --color-error-deep: 198 96 96;
+  --color-success: 143 191 143;
+
+  --color-card: 48 39 31;
+  --color-surface: 56 46 38;
+  --color-overlay: 8 7 6;
+  --color-on-accent: 27 22 17;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-sketch: 3px 3px 0 rgba(0, 0, 0, 0.45);
+
+  --paper-dot: rgba(240, 232, 214, 0.045);
 }
 
 html,
@@ -15,11 +68,11 @@ body,
 body {
   margin: 0;
   font-family: "Inter", system-ui, sans-serif;
-  color: #8b7355;
-  background-color: #fdfbf7;
+  color: rgb(var(--color-ink-soft));
+  background-color: rgb(var(--color-paper));
   background-image: radial-gradient(
     circle at 1px 1px,
-    rgba(74, 55, 40, 0.045) 1px,
+    var(--paper-dot) 1px,
     transparent 0
   );
   background-size: 26px 26px;
@@ -30,7 +83,7 @@ h2,
 h3,
 h4 {
   font-family: "Poppins", system-ui, sans-serif;
-  color: #4a3728;
+  color: rgb(var(--color-ink));
 }
 
 ::-webkit-scrollbar {
@@ -38,9 +91,9 @@ h4 {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #e8dcc8;
+  background: rgb(var(--color-line));
   border-radius: 9999px;
-  border: 2px solid #fdfbf7;
+  border: 2px solid rgb(var(--color-paper));
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -48,7 +101,7 @@ h4 {
 
 @layer components {
   .paper-card {
-    @apply rounded-card border border-line bg-white/70 shadow-sm;
+    @apply rounded-card border border-line bg-card/80 shadow-sm;
   }
   .dashed-rule {
     @apply border-b border-dashed border-line;

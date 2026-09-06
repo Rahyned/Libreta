@@ -5,27 +5,50 @@ import Modal from "../components/Modal";
 import MovieForm from "../components/MovieForm";
 import { formatDate } from "../lib/constants";
 import { useMovieStore } from "../store/useMovieStore";
-import type { Movie, MovieInput } from "../types";
+import type { MediaKind, Movie, MovieInput } from "../types";
+
+type WatchFilter = "all" | MediaKind;
 
 export default function Watchlist() {
   const { movies, users, load, setWatched, deleteMovie, addMovie } =
     useMovieStore();
   const [addOpen, setAddOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<WatchFilter>("all");
 
   useEffect(() => {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const onAdd = (e: Event) => {
+      const detail = (e as CustomEvent<{ kind?: MediaKind } | undefined>).detail;
+      if (!detail || !detail.kind || detail.kind === filter) setAddOpen(true);
+    };
+    window.addEventListener("libreta:add-movie", onAdd);
+    return () => window.removeEventListener("libreta:add-movie", onAdd);
+  }, [filter]);
+
   const watchlist = useMemo(
-    () => movies.filter((m) => !m.movie.watched),
-    [movies]
+    () =>
+      movies.filter(
+        (m) =>
+          !m.movie.watched &&
+          (filter === "all" || (m.movie.kind ?? "movie") === filter)
+      ),
+    [movies, filter]
   );
 
   const handleAdd = async (input: MovieInput) => {
     await addMovie(input);
     setAddOpen(false);
   };
+
+  const filters: { id: WatchFilter; label: string }[] = [
+    { id: "all", label: "Todo" },
+    { id: "movie", label: "Películas" },
+    { id: "series", label: "Series" },
+  ];
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -40,21 +63,37 @@ export default function Watchlist() {
         </div>
         <button
           onClick={() => setAddOpen(true)}
-          className="inline-flex items-center gap-2 rounded-full bg-pink px-5 py-2.5 text-sm font-semibold text-ink shadow-sm transition hover:bg-pink-deep"
+          className="inline-flex items-center gap-2 rounded-full bg-pink px-5 py-2.5 text-sm font-semibold text-accent-ink shadow-sm transition hover:bg-pink-deep"
         >
           <Plus size={16} />
           Agregar a la watchlist
         </button>
       </header>
 
+      <div className="mb-4 flex rounded-full border border-line bg-surface/50 p-1 sm:w-fit">
+        {filters.map((f) => (
+          <button
+            key={f.id}
+            onClick={() => setFilter(f.id)}
+            className={`flex-1 rounded-full px-5 py-1.5 text-sm font-semibold transition sm:flex-none ${
+              filter === f.id
+                ? "bg-pink text-accent-ink shadow-sm"
+                : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {watchlist.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-card border border-dashed border-line bg-white/50 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-card border border-dashed border-line bg-surface/50 py-16 text-center">
           <Eye size={40} className="mb-3 text-line" />
           <p className="font-display font-semibold text-ink">
             Watchlist vacía
           </p>
           <p className="mt-1 text-sm text-ink-soft">
-            Agrega películas que quieran ver más adelante.
+            Agrega películas y series que quieran ver más adelante.
           </p>
         </div>
       ) : (
@@ -90,8 +129,15 @@ export default function Watchlist() {
                   {movie.title}
                 </h3>
                 <p className="text-xs text-ink-soft">
-                  {[movie.year, movie.genre].filter(Boolean).join(" · ")}
-                  {movie.year || movie.genre ? " · " : ""}
+                  {movie.kind === "series" && (
+                    <span className="mr-1.5 rounded-full bg-pink/25 px-2 py-0.5 text-[10px] font-semibold text-ink">
+                      Serie
+                    </span>
+                  )}
+                  {[movie.kind === "series" ? (movie.seasons ? `${movie.seasons} temp.` : null) : null, movie.year, movie.genre]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  {[movie.year, movie.genre, movie.seasons].some((v) => v != null && v !== "") ? " · " : ""}
                   {formatDate(movie.added_date)}
                 </p>
               </div>
@@ -99,7 +145,7 @@ export default function Watchlist() {
               <div className="flex shrink-0 items-center gap-2">
                 <button
                   onClick={() => setWatched(movie.id, true)}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-blue px-3 py-1.5 text-xs font-semibold text-ink shadow-sm transition hover:bg-blue-deep"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-blue px-3 py-1.5 text-xs font-semibold text-accent-ink shadow-sm transition hover:bg-blue-deep"
                 >
                   <Eye size={13} />
                   Marcar como vista
@@ -139,7 +185,7 @@ export default function Watchlist() {
               if (deleteId) await deleteMovie(deleteId);
               setDeleteId(null);
             }}
-            className="rounded-full bg-error px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+            className="rounded-full bg-error-deep px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
           >
             Eliminar
           </button>

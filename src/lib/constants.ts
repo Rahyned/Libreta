@@ -36,6 +36,8 @@ export const USER_COLORS: string[] = [
 
 export const WATCHED_AT_OPTIONS: string[] = ["En Casa", "En el Cine"];
 
+export const SERIES_STATUS: string[] = ["Completada", "En curso", "Pausada"];
+
 const MONTHS = [
   "ene",
   "feb",

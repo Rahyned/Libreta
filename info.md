@@ -32,7 +32,7 @@ Crear una aplicación de escritorio nativa (Tauri) para anotar, rankear y compar
 ```
 --paper-bg: #fdfbf7          // Fondo principal (papel crema)
 --text-primary: #4a3728      // Texto marrón cálido
---text-secondary: #8b7355    // Texto secundario gris-marrón
+--text-secondary: #6f5a3a    // Texto secundario gris-marrón (WCAG AA)
 --accent-pink: #d4a5a5       // Rosa pastel (CTA, highlights)
 --accent-blue: #a8d5d5       // Turquesa pastel (secundario)
 --accent-peach: #ffe4d4      // Naranja muy pastel (avisos)
@@ -213,7 +213,7 @@ Props: {
 ```css
 h1 { font-family: Poppins; font-size: 2rem; font-weight: 700; color: #4a3728; }
 h2 { font-family: Poppins; font-size: 1.5rem; font-weight: 600; color: #4a3728; }
-body { font-family: Inter; font-size: 1rem; color: #8b7355; line-height: 1.6; }
+body { font-family: Inter; font-size: 1rem; color: #6f5a3a; line-height: 1.6; }
 .handwritten { font-family: Caveat; font-size: 1.1rem; color: #4a3728; }
 ```
 
@@ -314,3 +314,14 @@ body { font-family: Inter; font-size: 1rem; color: #8b7355; line-height: 1.6; }
 
 **¿Listo para usar este prompt con Claude Code o la herramienta de IA de tu elección. Genera primero estructura base + componentes React, luego backend Rust.**
 busca en todas las skills disponibles que tengas
+
+---
+
+## SKILLS POR DEFAULT (usar automáticamente)
+
+- `design-dna`: sistema de estilos e identidad visual (paleta pastel libreta, tipografías Poppins/Inter/Caveat)
+- `motion-design`: animaciones sutiles (fade-in 300ms, spring en stars, bounce en emoji)
+- `genjutsu`: efectos generativos / patrones en canvas (opcional)
+- `gsap`: alternativa a Framer Motion para animaciones más complejas (opcional)
+
+Nota: app de escritorio Tauri 2 (Rust + React). El frontend usa Tailwind + Framer Motion; el backend es Rust/SQLite (no Python), por lo que los skills de Python (testing/performance) no aplican aquí.

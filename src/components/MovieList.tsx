@@ -20,13 +20,13 @@ export default function MovieList({
 }: Props) {
   if (movies.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-card border border-dashed border-line bg-white/50 py-16 text-center">
+      <div className="flex flex-col items-center justify-center rounded-card border border-dashed border-line bg-surface/50 py-16 text-center">
         <Film size={40} className="mb-3 text-line" />
         <p className="font-display font-semibold text-ink">
-          Aún no hay películas
+          Aún no hay nada por aquí
         </p>
         <p className="mt-1 text-sm text-ink-soft">
-          Agrega la primera película que hayan visto juntos.
+          Agrega la primera película o serie que hayan visto juntos.
         </p>
       </div>
     );

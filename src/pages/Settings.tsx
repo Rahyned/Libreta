@@ -1,8 +1,14 @@
-import { Download, KeyRound, Save } from "lucide-react";
+import { Download, KeyRound, Moon, Save, Sun, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { exportBackup, importBackup } from "../lib/backup";
 import { USER_COLORS } from "../lib/constants";
+import { getInitialTheme, setTheme, type Theme } from "../lib/theme";
 import { useMovieStore } from "../store/useMovieStore";
+
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
 
 function UserEditor({
   id,
@@ -61,7 +67,7 @@ function UserEditor({
 
       <button
         onClick={save}
-        className="inline-flex items-center gap-1.5 rounded-full bg-blue px-4 py-2 text-sm font-semibold text-ink shadow-sm transition hover:bg-blue-deep"
+        className="inline-flex items-center gap-1.5 rounded-full bg-blue px-4 py-2 text-sm font-semibold text-accent-ink shadow-sm transition hover:bg-blue-deep"
       >
         <Save size={14} />
         {saved ? "Guardado" : "Guardar"}
@@ -125,26 +131,60 @@ function TmdbKeyEditor() {
 }
 
 export default function Settings() {
-  const { users, movies, updateUser, load } = useMovieStore();
+  const { users, updateUser, load } = useMovieStore();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(
+    null
+  );
+  const [theme, setThemeState] = useState<Theme>(() => getInitialTheme());
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const exportJson = () => {
-    const data = {
-      users,
-      movies: movies.map((m) => ({ ...m.movie, ratings: m.ratings })),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "peliculas.json";
-    a.click();
-    URL.revokeObjectURL(url);
+  useEffect(() => {
+    const onTheme = (e: Event) =>
+      setThemeState((e as CustomEvent<Theme>).detail);
+    window.addEventListener("libreta:theme", onTheme);
+    return () => window.removeEventListener("libreta:theme", onTheme);
+  }, []);
+
+  const handleTheme = (next: Theme) => {
+    setTheme(next);
+    setThemeState(next);
+  };
+
+  const handleExport = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { path } = await exportBackup();
+      if (path) {
+        setMessage({ text: `Respaldo guardado en ${path}`, error: false });
+      }
+    } catch (e) {
+      setMessage({ text: errMsg(e), error: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleImport = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const report = await importBackup();
+      if (!report) return;
+      await load();
+      setMessage({
+        text: `Importación lista: ${report.movies_imported} películas nuevas, ${report.movies_merged} ya existían, ${report.ratings_imported} valoraciones importadas.`,
+        error: false,
+      });
+    } catch (e) {
+      setMessage({ text: errMsg(e), error: true });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -172,6 +212,34 @@ export default function Settings() {
       </div>
 
       <h2 className="mb-3 mt-8 font-display text-lg font-semibold text-ink">
+        Tema
+      </h2>
+      <div className="paper-card flex items-center gap-2 p-4">
+        <button
+          onClick={() => handleTheme("light")}
+          className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+            theme === "light"
+              ? "bg-pink text-accent-ink shadow-sm"
+              : "text-ink-soft hover:bg-peach"
+          }`}
+        >
+          <Sun size={15} />
+          Claro
+        </button>
+        <button
+          onClick={() => handleTheme("dark")}
+          className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+            theme === "dark"
+              ? "bg-pink text-accent-ink shadow-sm"
+              : "text-ink-soft hover:bg-peach"
+          }`}
+        >
+          <Moon size={15} />
+          Oscuro
+        </button>
+      </div>
+
+      <h2 className="mb-3 mt-8 font-display text-lg font-semibold text-ink">
         Pósters
       </h2>
       <TmdbKeyEditor />
@@ -181,20 +249,38 @@ export default function Settings() {
       </h2>
       <div className="paper-card p-5">
         <p className="mb-3 text-sm text-ink-soft">
-          Exporta tu libreta como JSON para respaldarla o compartirla.
+          Exporta la libreta como JSON para respaldarla. Restaurar combina un
+          respaldo previo: no borra nada, solo suma lo que falte (por id o por
+          título).
         </p>
-        <button
-          onClick={exportJson}
-          className="inline-flex items-center gap-2 rounded-full bg-peach px-4 py-2 text-sm font-semibold text-ink shadow-sm transition hover:brightness-95"
-        >
-          <Download size={15} />
-          Exportar JSON
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleExport}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-full bg-peach px-4 py-2 text-sm font-semibold text-ink shadow-sm transition hover:brightness-95 disabled:opacity-60"
+          >
+            <Download size={15} />
+            Exportar respaldo
+          </button>
+          <button
+            onClick={handleImport}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-full bg-blue px-4 py-2 text-sm font-semibold text-accent-ink shadow-sm transition hover:bg-blue-deep disabled:opacity-60"
+          >
+            <Upload size={15} />
+            Restaurar respaldo
+          </button>
+        </div>
+        {message && (
+          <p
+            className={`mt-3 text-sm ${
+              message.error ? "text-error" : "text-ink-soft"
+            }`}
+          >
+            {message.text}
+          </p>
+        )}
       </div>
-
-      <p className="mt-10 text-center font-handwritten text-lg text-ink-soft/70">
-        hecha con cariño, para ustedes dos
-      </p>
     </div>
   );
 }
